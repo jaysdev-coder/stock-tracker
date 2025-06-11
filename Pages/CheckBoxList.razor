@@ -1,0 +1,17 @@
+﻿@page "/checkboxlist"
+<RadzenCheckBoxList @bind-Value=@values TValue="int" Change=@OnChange>
+    <Items>
+        <RadzenCheckBoxListItem Text="High" Value="1" />
+        <RadzenCheckBoxListItem Text="Close" Value="2" />
+        <RadzenCheckBoxListItem Text="Opening" Value="3" />
+        <RadzenCheckBoxListItem Text="Low" Value="4" />
+    </Items>
+</RadzenCheckBoxList>
+@code {
+    IEnumerable<int> values = new int[] { 1 };
+
+    void OnChange(IEnumerable<int> value)
+    {
+        Console.WriteLine($"Value changed to {string.Join(", ", value)}");
+    }
+}

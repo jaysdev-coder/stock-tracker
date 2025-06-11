@@ -1,0 +1,41 @@
+* {
+  display: inline-block;
+}
+
+.wrapper {
+  height: 600px;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+}
+
+.chart {
+  border: 1px;
+  border-style: solid;
+  text-align: center;
+}
+
+.favourites {
+  width: 100%;
+  text-align: center;
+  border: 1px;
+  border-style: solid;
+  display: flex;
+  flex-direction: column;
+}
+
+.news {
+  border: 1px;
+  border-style: solid;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.news h3{
+  margin-left: 30px;
+}
+
+li {
+  display: list-item ;
+  list-style: none;
+}

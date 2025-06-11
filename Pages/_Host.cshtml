@@ -1,0 +1,14 @@
+﻿
+@page "/"
+@namespace StockTracker.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = "_Layout";
+}
+  <link rel="stylesheet" href="_content/Radzen.Blazor/css/default.css">
+   <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/site.css" rel="stylesheet" />
+    <link href="StockTracker.styles.css" rel="stylesheet" />
+<script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
+
+<component type="typeof(App)" render-mode="ServerPrerendered" />

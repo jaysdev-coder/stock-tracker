@@ -1,0 +1,16 @@
+#stockStatisticsContainer {
+    display: grid;
+    grid-template-rows: auto auto;
+    /* padding-top: 10px;
+    padding-bottom: 10px; */
+}
+
+#quoteContainer {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-template-rows: auto auto;
+}
+
+#mainContainer {
+    padding: 10px;
+}

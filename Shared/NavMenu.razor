@@ -1,0 +1,54 @@
+﻿<div class="top-row ps-1 navbar"  style="height: 100px; border-bottom: 1px solid gainsboro; text-align: center;" id="sideNav">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="" style="margin-top: -10px; color: white; font-size: 18pt">StockTracker</a>
+        <AuthorizeView>
+            <div style="color: gainsboro">Welcome back, @context.User.Identity.Name</div>
+        </AuthorizeView>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3" style="width: 95%;">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" style="text-decoration: none;">
+                <span class="oi oi-home" aria-hidden="true"></span> <b>Home</b>
+            </NavLink>
+        </div>
+        @* <div class="nav-item px-3" style="width: 95%;">
+            <NavLink class="nav-link" href="stocks" style="text-decoration: none;">
+                <span class="oi oi-graph" aria-hidden="true"></span> <b>My Stocks</b>
+            </NavLink>
+        </div> *@
+        <div class="nav-item px-3" style="width: 95%;">
+            <AuthorizeView>
+                <NavLink class="nav-link" href="Identity/Account/Manage" style="text-decoration: none;">
+                    <span class="oi oi-person" style="color: white;" aria-hidden="true"></span> <b>My Account</b>
+                </NavLink>
+            </AuthorizeView>
+        </div>
+        @* <div class="nav-item px-3">
+            <NavLink class="nav-link" href="TestStock">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Test Stock API
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="LineGraphs">
+                <span class="oi oi-list-rich" aria-hidden="LineGraphs"></span> Line Graphs
+            </NavLink>
+        </div> *@
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

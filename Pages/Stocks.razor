@@ -1,0 +1,68 @@
+﻿@page "/stocks"
+@attribute [Authorize]
+<PageTitle>Stocks</PageTitle>
+
+@using StockTracker.Data;
+@inject StockService stockService
+
+<h1>Currents stocks</h1>
+
+
+@if (stocks == null)
+{
+  <p><em>Loading...</em></p>
+}
+else
+{
+  <table class='table table-hover'>
+  <thead>
+    <tr>
+      <th>Ticker</th>
+      <th>UserId</th>
+    </tr>
+  </thead>
+  <tbody>
+    @foreach (var item in stocks)
+      {
+        <tr>
+          <td>@item.ticker</td>
+          <td>@item.userId</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}
+
+  <input type="text" @bind="Ticker" />
+<button class="btn btn-dark " @onclick="AddStock" />
+
+@code {
+  List<Stock>? stocks;
+  [CascadingParameter] protected Task<AuthenticationState>? AuthStat { get; set; }
+  String? Ticker;
+  String? UserId;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await load();
+  }
+
+  protected async Task load()
+  {
+    stocks = await stockService.GetStocksAsync();
+  }
+
+  protected async Task AddStock()
+  {
+    var user = (await AuthStat).User;
+    UserId = user.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value!;
+
+    Stock s = new Stock()
+    {
+      ticker = Ticker,
+      userId = UserId
+    };
+
+    await stockService.InsertStockAsync(s);
+  }
+}

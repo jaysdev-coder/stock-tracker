@@ -1,0 +1,285 @@
+@page "/TestStock"
+@inject Microsoft.Extensions.Configuration.IConfiguration config;
+@using System;
+@using System.Linq;
+@using System.Text.Json.Serialization;
+@using System.Text.Json;
+@using Newtonsoft.Json
+@using System.Collections;
+@using System.Collections.Generic;
+@using System.Text.RegularExpressions;
+@using Newtonsoft.Json.Serialization
+@using StockTracker.Data;
+@using System.Runtime.Serialization
+@using System.Globalization
+@inject StockService stockService;
+
+@* HTML CONTENT *@
+<div id="mainContainer">
+  <RadzenTemplateForm Data=@this>
+    @* Ticker Box *@
+    <RadzenAutoComplete Style="width: 100%;" @bind-Value=@this.mTickerName Placeholder="Enter a Ticker" />
+    @if (this.errorFlag)
+          {
+            <RadzenLabel Text=@this.errorMsg style="color: red; font-weight: bold;" />
+          }
+          @if (this.errorLetterOnlyFlag)
+          {
+            <RadzenLabel Text=@this.errorMsg style="color: red; font-weight: bold;" />
+          }
+          @if (this.errorAPIStatusFlag)
+          {
+            <RadzenLabel Text=@this.errorMsg style="color: red; font-weight: bold;" />
+          }
+          @* NOTE: Always have a null check to object before PAGE loads, otherwise it will app will crash *@
+    @if (mCurrentStock != null)
+          {
+            <div id="stockStatisticsContainer">
+              <hr>
+              <div id="stockTickerName">
+                <p><b>Previous Day Quote for @this.mTickerName</b></p>
+              </div>
+
+              <div id="quoteContainer">
+                @foreach (var stat in mCurrentStock?.results!)
+                {
+                  <p>High: @stat.h</p>
+                  <p>Close: @stat.c</p>
+                  <p>Opening: @stat.o</p>
+                  <p>Low: @stat.l</p>
+                }
+              </div>
+              <hr style="margin-top: -0px;">
+            </div>
+          }
+          <div>
+            <RadzenLabel Text="From" />
+          </div>
+          <div>
+            <RadzenDatePicker DateFormat="yyyy-MM-dd" style="width: 100%;" @bind-Value=@this.TTimeFrom />
+            @if (this.errorDateFromFlag)
+            {
+              <RadzenLabel Text=@this.errorMsg style="color: red; font-weight: bold;" />
+            }
+          </div>
+          <div>
+            <RadzenLabel Text="To" />
+          </div>
+          <div>
+            <RadzenDatePicker DateFormat="yyyy-MM-dd" style="width: 100%;" @bind-Value=@this.TTimeTo />
+            @if (this.errorDateToFlag)
+            {
+              <RadzenLabel Text=@this.errorMsg style="color: red; font-weight: bold;" />
+            }
+          </div>
+          <br>
+          @if (this.errorAddStockFlag)
+          {
+            <RadzenLabel Text=@this.errorStockMsg style="color: red; font-weight: bold;" />
+          }
+          <RadzenSplitButton Click=@(() => Submit.InvokeAsync(@mTickerName)) Text="Submit" style="font-weight: bold;">
+            <ChildContent>
+              <button @onclick="AddStock">
+                <RadzenSplitButtonItem Text="Add Ticker to Watchlist" Icon="add_task" />
+              </button>
+            </ChildContent>
+          </RadzenSplitButton>
+        </RadzenTemplateForm>
+      </div>
+
+      @code {
+  HttpClient httpClient = new HttpClient();
+  public StockSymbol? mCurrentStock;
+  public string? mTickerName;
+  private string? mJsonRes;
+  private List<string>? mTickersList = new List<string>();
+  private List<string>? mStockTimeSpan = new List<string> { "minute", "hour", "day", "week", "month", "quarter", "year" };
+  private DateTime? TTimeFrom;
+  private DateTime? TTimeTo;
+  public string? mTimeFrom;
+  public string? mTimeTo;
+
+  @* ERROR Message *@
+  private string? errorMsg;
+  private string? errorStockMsg;
+  private Boolean errorFlag = false;
+  private Boolean errorLetterOnlyFlag = false;
+  private Boolean errorDateFromFlag = false;
+  private Boolean errorDateToFlag = false;
+  private Boolean errorAPIStatusFlag = false;
+  private Boolean errorAddStockFlag = true; //Not allowed to add until after validation from API
+
+  [Parameter]
+  public EventCallback<string> Submit { get; set; }
+
+  public async Task? submit(string tickerName)
+  {
+    @* Flag Reset *@
+    this.errorFlag = false;
+    this.errorLetterOnlyFlag = false;
+    this.errorDateFromFlag = false;
+    this.errorDateToFlag = false;
+
+    @* Validates for Non-empty String *@
+    if (String.IsNullOrEmpty(tickerName))
+    {
+      this.errorFlag = !(errorFlag);
+      this.errorMsg = "Ticker cannot be empty";
+      return;
+    }
+
+    @* Validates for Letters Only *@
+    if (!Regex.IsMatch(tickerName, @"^[a-zA-Z]+$"))
+    {
+      this.errorLetterOnlyFlag = !(errorLetterOnlyFlag);
+      this.errorMsg = "Ticker must only contain letters";
+      return;
+    }
+
+    @* Validate the From Date *@
+    if (String.IsNullOrEmpty(this.TTimeFrom.ToString()))
+    {
+      this.errorDateFromFlag = !(this.errorDateFromFlag);
+      this.errorMsg = "Date From cannot be empty";
+      return;
+    }
+
+    @* Validate the To Date *@
+    if (String.IsNullOrEmpty(this.TTimeTo.ToString()))
+    {
+      this.errorDateToFlag = !(this.errorDateToFlag);
+      this.errorMsg = "Date To cannot be empty";
+      return;
+    }
+
+    @* Parse and Convert Date Returned *@
+    this.mTimeFrom = TTimeFrom.ToString()!.Substring(0, 9);
+    this.mTimeTo = TTimeTo.ToString()!.Substring(0, 9);
+
+    DateTime dateFrom = new DateTime();
+    dateFrom = Convert.ToDateTime(mTimeFrom);
+    this.mTimeFrom = dateFrom.ToString("yyyy-MM-dd");
+
+    DateTime dateTo = new DateTime();
+    dateTo = Convert.ToDateTime(mTimeTo);
+    this.mTimeTo = dateTo.ToString("yyyy-MM-dd");
+
+    @* Regex to Remove Whitespace and Convert to UpperCase *@
+    tickerName = Regex.Replace(tickerName!.ToString()!.ToUpper()!.Trim(), @"\s+", "");
+    this.mTickerName = tickerName;
+
+    getCurrentDayQuote(tickerName);
+  }
+  protected override async Task OnInitializedAsync()
+  {
+    await load(); //Load Favorite Stocks
+  }
+
+  @* A helper function that gets the tickerName from search bar and fires API *@
+  public async void getCurrentDayQuote(string tickerName)
+  {
+    this.mCurrentStock = null;
+    this.mJsonRes = null;
+
+    @* API Call 1: Get Most Recent Day Quotas *@
+    string aaplDetail = "https://api.polygon.io/v2/aggs/ticker/" + tickerName +
+        "/prev?adjusted=true&apiKey=WuCRrJx5EwrJBBCjO_9FbpPEagQhdpCF";
+
+    string QUERY_URL;
+
+    QUERY_URL = aaplDetail;
+
+    Uri queryUri = new Uri(QUERY_URL);
+
+    HttpResponseMessage response = await httpClient.GetAsync(queryUri);
+
+    mJsonRes = await response.Content.ReadAsStringAsync(); //String
+
+    mCurrentStock = JsonConvert.DeserializeObject<StockSymbol>(mJsonRes);
+
+    Console.WriteLine(this.errorMsg);
+
+    @* Error Handling *@
+    if (mCurrentStock!.resultsCount == 0)
+    {
+      this.errorAPIStatusFlag = !(errorAPIStatusFlag);
+      this.errorMsg = "Invalid Ticker Symbol was placed!";
+      return;
+    }
+
+    this.errorAddStockFlag = !(errorAddStockFlag);
+
+    await InvokeAsync(() =>
+    {
+      StateHasChanged();
+    });
+  }
+
+  @* MODELS for Returned JSON *@
+  public class StockSymbol
+  {
+    [JsonPropertyName("results")]
+    public Results[]? results { get; set; }
+
+    [JsonPropertyName("resultsCount")]
+    public int? resultsCount { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? status { get; set; }
+  }
+
+  public class Results
+  {
+    public string? T { get; set; }
+    public double c { get; set; }
+    public double h { get; set; }
+    public double l { get; set; }
+    public double o { get; set; }
+    public double t { get; set; }
+    public double v { get; set; }
+    public double vw { get; set; }
+    public string? ticker { get; set; }
+  }
+
+  @* Stock for SQL LITE *@
+  List<Stock>? stocks;
+  [CascadingParameter] protected Task<AuthenticationState>? AuthStat { get; set; }
+  String? Ticker;
+  String? UserId;
+  private String? successAddMsg;
+  protected async Task load()
+  {
+    stocks = await stockService.GetStocksAsync();
+  }
+  protected async Task AddStock()
+  {
+    @* Check if invalid tickerName *@
+    if (this.errorAddStockFlag == true)
+    {
+      this.errorStockMsg = "Invalid Stock Symbol!";
+      return;
+    }
+
+    var user = (await AuthStat).User;
+    UserId = user.FindFirst(u => u.Type.Contains("nameidentifier"))?.Value!;
+
+    if (String.IsNullOrEmpty(this.mTickerName))
+    {
+      return;
+    }
+
+    Stock s = new Stock()
+    {
+      ticker = this.mTickerName,
+      userId = UserId
+    };
+
+    if(stockService.StockExists(s.ticker)) {
+      this.errorStockMsg = "Stock is already in your watchlist!";
+      return;
+    }
+
+    await stockService.InsertStockAsync(s);
+
+  }
+}

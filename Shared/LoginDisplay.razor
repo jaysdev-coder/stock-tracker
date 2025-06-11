@@ -1,0 +1,15 @@
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+  
+<AuthorizeView>
+
+  <Authorized>
+  </Authorized>
+
+  <NotAuthorized>
+    <a class="nav-link text-dark" href="Identity/Account/Login">Login</a>
+    <a class="nav-link text-dark" href="Identity/Account/Register">Register</a>
+  </NotAuthorized>
+
+</AuthorizeView>

@@ -1,0 +1,140 @@
+﻿@page "/lineGraphs"
+@using System.Globalization
+@using System.Text.Json.Serialization
+@inject Microsoft.Extensions.Configuration.IConfiguration config;
+@using System;
+@using System.Linq;
+@using System.Text.Json.Serialization;
+@using System.Text.Json;
+@using Newtonsoft.Json
+@using System.Collections;
+@using System.Collections.Generic;
+@using System.Text.RegularExpressions;
+@using Newtonsoft.Json.Serialization
+@using StockTracker.Data;
+@using System.Runtime.Serialization
+
+<div class="col-md-12" id="graphContainer">
+    @if(this.mTickerName == null) {
+        <div>
+        </div>   
+    } else {
+        <div id="headerContainer">
+            <h2 style="letter-spacing: 1px;">@mTickerName</h2>
+            <span style="color: #969696; font-size: 16pt;">
+                <b>@dateFrom to @dateTo</b>
+            </span>
+        </div>   
+    }
+    <RadzenChart style="height: 500px; color: green;">
+        <RadzenLineSeries Smooth="@smooth" Data="@yearlyData" CategoryProperty="Date" Title="Price" ValueProperty="closingPrice">
+            <RadzenMarkers MarkerType="MarkerType.Circle" />
+        </RadzenLineSeries>
+        <RadzenCategoryAxis Padding="0" FormatString="{0:MMM}" />
+        <RadzenValueAxis Formatter="@FormatAsUSD">
+            <RadzenGridLines Visible="true" />
+            <RadzenAxisTitle Text="Stock Price (USD)" />
+        </RadzenValueAxis>
+    </RadzenChart>
+</div>
+
+<link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+<link href="css/site.css" rel="stylesheet" />
+<link href="StockTracker.styles.css" rel="stylesheet" />
+
+@code {
+    public StockSymbol? mCurrentStock;
+    private string? mJsonRes;
+    HttpClient httpClient = new HttpClient();
+    private List<DataItem> yearlyData = new List<DataItem>();
+    private String? dateFrom = null;
+    private String? dateTo = null;
+    private String? mTickerName = null;
+
+    @* Graph Components *@
+    [Parameter]
+    public string? lineGraphSize { get; set; }
+    bool smooth = false;
+
+    class DataItem
+    {
+        public DateTime? Date { get; set; }
+        public double closingPrice { get; set; }
+    }
+
+    string FormatAsUSD(object value)
+    {
+        return ((double)value).ToString("C0", CultureInfo.CreateSpecificCulture("en-US"));
+    }
+
+    @* ===================// END OF GRAPH COMPONENTS //================= *@
+
+    @* Fetch From API *@
+    public async Task getYearlyGraphData(string tickerName, string dateFrom, string dateTo)
+    {
+        @* Clear Variables *@
+        this.yearlyData.Clear();
+        this.dateFrom = null;
+        this.dateTo = null;
+        this.mTickerName = null;
+
+        @* Setting Dates for Display *@
+        this.dateFrom = dateFrom;
+        this.dateTo = dateTo;
+        this.mTickerName = tickerName;
+
+        string api = $"https://api.polygon.io/v2/aggs/ticker/{tickerName}/range/1/month/{dateFrom}/{dateTo}?adjusted=true&sort=asc&limit=5000&apiKey=WuCRrJx5EwrJBBCjO_9FbpPEagQhdpCF";
+
+        string QUERY_URL;
+
+        QUERY_URL = api;
+
+        Uri queryUri = new Uri(QUERY_URL);
+
+        HttpResponseMessage response = await httpClient.GetAsync(queryUri);
+
+        mJsonRes = await response.Content.ReadAsStringAsync();
+
+        mCurrentStock = JsonConvert.DeserializeObject<StockSymbol>(mJsonRes);
+
+        @* Fills the Chart Data Array *@
+        foreach (var item in mCurrentStock!.results) {
+            DataItem s = new DataItem() {
+                Date = DateTime.Parse((new DateTime(1970, 1, 1)).AddMilliseconds(double.Parse(item.t.ToString())).ToString("yyyy-MM-dd").Substring(0, 10)),
+                closingPrice = item.c,
+            };
+            this.yearlyData.Add(s);
+
+            await InvokeAsync(() => {
+                StateHasChanged();
+            });
+        }
+    }
+
+    @* MODELS for Returned JSON *@
+    public class StockSymbol
+    {
+        [JsonPropertyName("results")]
+        public Results[]? results { get; set; }
+
+        [JsonPropertyName("resultsCount")]
+        public int? resultsCount { get; set; }
+
+        [JsonPropertyName("status")]
+        public string? status { get; set; }
+    }
+
+    public class Results
+    {
+        public string? T { get; set; }
+        public double c { get; set; }
+        public double h { get; set; }
+        public double l { get; set; }
+        public double o { get; set; }
+        public double t { get; set; }
+        public double v { get; set; }
+        public double vw { get; set; }
+        public string? ticker { get; set; }
+    }
+
+}
