@@ -14,10 +14,13 @@
 @using StockTracker.Data;
 @using System.Runtime.Serialization
 
-<div class="col-md-12" id="graphContainer">
+<div class="col-md-12 d-flex justify-content-center align-items-center" id="graphContainer" style="min-height: 500px;">
     @if(this.mTickerName == null) {
-        <div>
-        </div>   
+        <div></div>   
+    } else if (this.mCurrentStock == null || this.mCurrentStock.results == null || this.mCurrentStock.results.Length == 0) {
+        <div class="alert alert-warning" style="font-size: 18pt; text-align: center; margin: 0 auto;">
+            No data available for this date range.
+        </div>
     } else {
         <div id="headerContainer">
             <h2 style="letter-spacing: 1px;">@mTickerName</h2>
@@ -26,16 +29,18 @@
             </span>
         </div>   
     }
-    <RadzenChart style="height: 500px; color: green;">
-        <RadzenLineSeries Smooth="@smooth" Data="@yearlyData" CategoryProperty="Date" Title="Price" ValueProperty="closingPrice">
-            <RadzenMarkers MarkerType="MarkerType.Circle" />
-        </RadzenLineSeries>
-        <RadzenCategoryAxis Padding="0" FormatString="{0:MMM}" />
-        <RadzenValueAxis Formatter="@FormatAsUSD">
-            <RadzenGridLines Visible="true" />
-            <RadzenAxisTitle Text="Stock Price (USD)" />
-        </RadzenValueAxis>
-    </RadzenChart>
+    @if (this.mCurrentStock != null && this.mCurrentStock.results != null && this.mCurrentStock.results.Length > 0) {
+        <RadzenChart style="height: 500px; color: green;">
+            <RadzenLineSeries Smooth="@smooth" Data="@yearlyData" CategoryProperty="Date" Title="Price" ValueProperty="closingPrice">
+                <RadzenMarkers MarkerType="MarkerType.Circle" />
+            </RadzenLineSeries>
+            <RadzenCategoryAxis Padding="0" FormatString="{0:MMM}" />
+            <RadzenValueAxis Formatter="@FormatAsUSD">
+                <RadzenGridLines Visible="true" />
+                <RadzenAxisTitle Text="Stock Price (USD)" />
+            </RadzenValueAxis>
+        </RadzenChart>
+    }
 </div>
 
 <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
@@ -97,8 +102,17 @@
 
         mCurrentStock = JsonConvert.DeserializeObject<StockSymbol>(mJsonRes);
 
+        @* Check if mCurrentStock is null before proceeding *@
+        if (mCurrentStock == null || mCurrentStock.results == null || mCurrentStock.results.Length == 0)
+        {
+            await InvokeAsync(() => {
+                StateHasChanged();
+            });
+            return;
+        }
+
         @* Fills the Chart Data Array *@
-        foreach (var item in mCurrentStock!.results) {
+        foreach (var item in mCurrentStock.results) {
             DataItem s = new DataItem() {
                 Date = DateTime.Parse((new DateTime(1970, 1, 1)).AddMilliseconds(double.Parse(item.t.ToString())).ToString("yyyy-MM-dd").Substring(0, 10)),
                 closingPrice = item.c,
